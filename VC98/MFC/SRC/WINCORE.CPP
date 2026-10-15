@@ -220,18 +220,9 @@ LRESULT AFXAPI AfxCallWndProc(CWnd* pWnd, HWND hWnd, UINT nMsg,
 	}
 	CATCH_ALL(e)
 	{
-		CWinThread* pWinThread = AfxGetThread();
-		if ( pWinThread != NULL )
-		{
-			lResult = pWinThread->ProcessWndProcException(e, &pThreadState->m_lastSentMsg);
-			TRACE1("Warning: Uncaught exception in WindowProc (returning %ld).\n",
-				lResult);
-		}
-		else
-		{
-			TRACE0("Warning: Uncaught exception in WindowProc.\n");
-			lResult = 0;
-		}
+		lResult = AfxGetThread()->ProcessWndProcException(e, &pThreadState->m_lastSentMsg);
+		TRACE1("Warning: Uncaught exception in WindowProc (returning %ld).\n",
+			lResult);
 		DELETE_EXCEPTION(e);
 	}
 	END_CATCH_ALL
@@ -373,8 +364,6 @@ AfxWndProc(HWND hWnd, UINT nMsg, WPARAM wParam, LPARAM lParam)
 	CWnd* pWnd = CWnd::FromHandlePermanent(hWnd);
 	ASSERT(pWnd != NULL);
 	ASSERT(pWnd->m_hWnd == hWnd);
-	if (pWnd == NULL || pWnd->m_hWnd != hWnd)
-		return ::DefWindowProc(hWnd, nMsg, wParam, lParam);
 	return AfxCallWndProc(pWnd, hWnd, nMsg, wParam, lParam);
 }
 

@@ -814,30 +814,17 @@ static void __cdecl _store_winword (
                                 else
                                         ampmstr = lc_time->ampm[1];
 
-                                if (  (repeat == 1) && (*count > 0) )
+                                while ( (repeat > 0) && (*count > 0) )
                                 {
-                                        if ( isleadbyte((int)*ampmstr) && (*count > 1) )
+                                        if ( isleadbyte((int)*ampmstr) &&
+                                             (*count > 1) )
                                         {
                                                 *(*out)++ = *ampmstr++;
                                                 (*count)--;
                                         }
                                         *(*out)++ = *ampmstr++;
                                         (*count)--;
-                                }
-                                else
-                                {
-                                        /* assume repeat == 2           */
-                                        /* i.e. copy whole am/pm string */
-                                        while( (*ampmstr != 0) && ( *count > 0 ) )
-                                        {
-                                                if ( isleadbyte((int)*ampmstr) && (*count > 1) )
-                                                {
-                                                        *(*out)++ = *ampmstr++;
-                                                        (*count)--;
-                                                }
-                                                *(*out)++ = *ampmstr++;
-                                                (*count)--;
-                                        }
+                                        repeat--;
                                 }
                                 format = p;
                                 continue;

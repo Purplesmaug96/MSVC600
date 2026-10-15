@@ -3337,10 +3337,6 @@ inline HRESULT CComTypeInfoHolder::GetTI(LCID lcid)
 			pTypeLib->Release();
 		}
 	}
-	else
-	{
-		hRes = S_OK;
-	}
 	LeaveCriticalSection(&_Module.m_csTypeInfoHolder);
 	_Module.AddTermFunc(Cleanup, (DWORD)this);
 	return hRes;

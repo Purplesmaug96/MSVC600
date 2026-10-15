@@ -68,7 +68,6 @@ static HTTPStatusInfo statusStrings[] = {
 	{ HTTP_STATUS_AUTH_REQUIRED,    _T("Unauthorized") },
 	{ HTTP_STATUS_FORBIDDEN,        _T("Forbidden") },
 	{ HTTP_STATUS_NOT_FOUND,        _T("Not Found") },
-	{ HTTP_STATUS_REQUEST_TOO_LARGE,_T("Request entity was too large") },
 	{ HTTP_STATUS_SERVER_ERROR,     _T("Internal Server Error") },
 	{ HTTP_STATUS_NOT_IMPLEMENTED,  _T("Not Implemented") },
 	{ HTTP_STATUS_BAD_GATEWAY,      _T("Bad Gateway") },
@@ -220,7 +219,6 @@ CHttpAsyncContext::CHttpAsyncContext(HANDLE hFile, LPVOID pvHeader,
 	{
 		m_pvHeader = new BYTE[dwHeaderLen+1];
 		memcpy(m_pvHeader, pvHeader, dwHeaderLen);
-		reinterpret_cast<BYTE*>(m_pvHeader)[dwHeaderLen] = '\0';
 		m_dwHeaderLen = dwHeaderLen;
 	}
 
@@ -233,7 +231,6 @@ CHttpAsyncContext::CHttpAsyncContext(HANDLE hFile, LPVOID pvHeader,
 	{
 		m_pvTail = new BYTE[dwTailLen+1];
 		memcpy(m_pvTail, pvTail, dwTailLen);
-		reinterpret_cast<BYTE*>(m_pvTail)[dwTailLen] = '\0';
 		m_dwTailLen = dwTailLen;
 	}
 }
@@ -347,14 +344,14 @@ LPTSTR CHttpServer::GetQuery(CHttpServerContext* pCtxt, LPTSTR lpszQuery)
 
 	if (pCtxt->m_pECB->cbAvailable < pCtxt->m_pECB->cbTotalBytes)
 	{
-		LPTSTR pstrTarget = lpszQuery + pCtxt->m_pECB->cbAvailable;
+		LPCTSTR pstrTarget = lpszQuery + pCtxt->m_pECB->cbAvailable;
 		DWORD cbRemaining = pCtxt->m_pECB->cbTotalBytes - pCtxt->m_pECB->cbAvailable;
 		DWORD cbRead;
 
 		while (cbRemaining > 0)
 		{
 			cbRead = cbRemaining;
-			if (!pCtxt->ReadClient(pstrTarget, &cbRead))
+			if (!pCtxt->ReadClient((LPVOID) pstrTarget, &cbRead))
 			{
 				ISAPITRACE("Error: only %d of %d bytes read!\n",
 					pCtxt->m_pECB->cbTotalBytes - cbRemaining,
@@ -368,8 +365,6 @@ LPTSTR CHttpServer::GetQuery(CHttpServerContext* pCtxt, LPTSTR lpszQuery)
 			pstrTarget += cbRead;
 			cbRemaining -= cbRead;
 		}
-
-		*pstrTarget = '\0';
 	}
 
 	pCtxt->m_dwBytesReceived = pCtxt->m_pECB->cbTotalBytes;
@@ -431,27 +426,8 @@ DWORD CHttpServer::HttpExtensionProc(EXTENSION_CONTROL_BLOCK *pECB)
 	}
 	else if (lstrcmpi(pECB->lpszMethod, szPost) == 0)
 	{
-		if(pECB->cbTotalBytes == 0xffffffff)
-		{
-			dwRet = HSE_STATUS_ERROR ;
-			pECB->dwHttpStatusCode = HTTP_STATUS_REQUEST_TOO_LARGE ;
-			goto CleanUp;
-		}
-		
-		if(pECB->cbTotalBytes < pECB->cbAvailable)
-		{
-			dwRet = HSE_STATUS_ERROR ;
-			pECB->dwHttpStatusCode = HTTP_STATUS_BAD_REQUEST;
-			goto CleanUp;
-		}
-		
 		pszCommand = pECB->lpszQueryString;
 		pszPostBuffer = new TCHAR[pECB->cbTotalBytes + 1];
-		if( pszPostBuffer == NULL )
-		{
-			dwRet = HSE_STATUS_ERROR;
-			goto CleanUp;
-		}
 		pszQuery =  GetQuery(&ctxtCall, pszPostBuffer);
 		if (pszQuery == NULL)
 		{
@@ -717,9 +693,8 @@ BOOL CHttpServer::OnParseError(CHttpServerContext* pCtxt, int nMethodRet)
 
 			if (::LoadString(hRes, AFX_IDS_HTTP_TITLE, szTitle, _countof(szTitle)) > 0)
 			{
-				TCHAR szTitleCopy[512];
-				_sntprintf(szTitleCopy, 512, szTitle, pCtxt->m_pECB->dwHttpStatusCode);
-				szTitleCopy[511] = 0;
+				TCHAR szTitleCopy[64];
+				wsprintf(szTitleCopy, szTitle, pCtxt->m_pECB->dwHttpStatusCode);
 				*pCtxt << szTitleCopy;
 			}
 
@@ -2060,7 +2035,7 @@ CHtmlStream& CHtmlStream::operator<<(long int dw)
 
 CHtmlStream& CHtmlStream::operator<<(float f)
 {
-	TCHAR sz[512];
+	TCHAR sz[64];
 	int nLen = _stprintf(sz, szFloatFormat, f);
 	Write(sz, nLen);
 	return *this;
@@ -2068,7 +2043,7 @@ CHtmlStream& CHtmlStream::operator<<(float f)
 
 CHtmlStream& CHtmlStream::operator<<(double d)
 {
-	TCHAR sz[512];
+	TCHAR sz[64];
 	int nLen = _stprintf(sz, szFloatFormat, d);
 	Write(sz, nLen);
 	return *this;
